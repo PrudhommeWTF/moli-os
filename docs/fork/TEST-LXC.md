@@ -13,8 +13,8 @@ Notations : `<CTID>` est le numéro du conteneur créé, `<IP>` son adresse. Les
 
 1. Les scripts sont sur `main` du fork (ils y cherchent leur `install/` et leur `update`).
 2. Actions est autorisé sur le fork, et une première release existe :
-   `git tag -a v0.1.0-1 -m "Moli OS v0.1.0-1" && git push origin v0.1.0-1`
-   (voir [RELEASES.md](RELEASES.md)). Attendu : la release `v0.1.0-1` avec ses cinq fichiers.
+   `git tag -a v0.1.0-2 -m "Moli OS v0.1.0-2" && git push origin v0.1.0-2`
+   (voir [RELEASES.md](RELEASES.md)). Attendu : la release `v0.1.0-2` avec ses cinq fichiers.
 
 ## 1. Installer
 
@@ -51,7 +51,7 @@ systemctl --failed --no-legend               # rien : Debian 13 vit bien sans ne
 moli-os check-config                         # configuration OK (0 driver(s))
 moli-os health && echo OK                    # OK
 curl -s http://127.0.0.1:8790/api/health | head -c 300; echo
-cat ~/.moli-os                               # 0.1.0-1
+cat ~/.moli-os                               # 0.1.0-2
 ps -o user,rss,cmd -C moli-os                # moli, quelques Mo de RSS
 stat -c '%U:%G %a %n' /etc/moli-os/master.key /var/lib/moli-os /var/lib/moli-os/moli.toml
                                              # moli:moli 600, moli:moli 750, moli:moli 640
@@ -109,7 +109,7 @@ Attendu : `clé absente`, `OK`, et dans le dashboard le code de la maison marche
 Sur votre poste, publier la suivante :
 
 ```sh
-git tag -a v0.1.0-2 -m "Moli OS v0.1.0-2" && git push origin v0.1.0-2
+git tag -a v0.1.0-3 -m "Moli OS v0.1.0-3" && git push origin v0.1.0-3
 ```
 
 Une fois la release publiée, LXC :
@@ -118,17 +118,17 @@ Une fois la release publiée, LXC :
 update
 ```
 
-Attendu, dans l'ordre : `Update available: moli-os 0.1.0-1 -> 0.1.0-2`, `Backed up Moli OS
-data to /var/backups/moli-os/<date>-0.1.0-1`, `Stopped Moli OS`, `Kept the current Moli OS
-binary…`, `Deployed: moli-os (0.1.0-2)`, `Started Moli OS (/api/health answers)`,
+Attendu, dans l'ordre : `Update available: moli-os 0.1.0-2 -> 0.1.0-3`, `Backed up Moli OS
+data to /var/backups/moli-os/<date>-0.1.0-2`, `Stopped Moli OS`, `Kept the current Moli OS
+binary…`, `Deployed: moli-os (0.1.0-3)`, `Started Moli OS (/api/health answers)`,
 `Updated successfully!`.
 
 ```sh
-cat ~/.moli-os                                   # 0.1.0-2
-cat /opt/moli-os/moli-os.previous.version        # 0.1.0-1
+cat ~/.moli-os                                   # 0.1.0-3
+cat /opt/moli-os/moli-os.previous.version        # 0.1.0-2
 ls /var/backups/moli-os                          # une sauvegarde de plus
 sha256sum -c /root/avant.sha256                  # les deux OK : clé et moli.toml intacts
-update                                           # No update available: moli-os (0.1.0-2)
+update                                           # No update available: moli-os (0.1.0-3)
 ```
 
 ## 6. Revenir en arrière
@@ -142,13 +142,13 @@ systemctl stop moli-os
 cp -a /opt/moli-os/moli-os.previous /opt/moli-os/moli-os
 cp -a /opt/moli-os/moli-os.previous.version ~/.moli-os
 systemctl start moli-os; sleep 3; moli-os health && echo OK
-cat ~/.moli-os                                   # 0.1.0-1
+cat ~/.moli-os                                   # 0.1.0-2
 ```
 
 ### Le retour automatique (facultatif)
 
 Une version qui démarre sans répondre, simulée en remplaçant le programme du service, pendant
-que `update` repasse à `0.1.0-2` :
+que `update` repasse à `0.1.0-3` :
 
 ```sh
 mkdir -p /etc/systemd/system/moli-os.service.d
@@ -161,9 +161,9 @@ systemctl daemon-reload
 update
 ```
 
-Attendu : `Moli OS 0.1.0-2 does not answer /api/health: going back to the previous binary`,
-puis `Previous Moli OS binary restored (0.1.0-1)` et la commande `restore` de la sauvegarde ;
-le script sort en erreur. `cat ~/.moli-os` donne `0.1.0-1`. Retirer la panne :
+Attendu : `Moli OS 0.1.0-3 does not answer /api/health: going back to the previous binary`,
+puis `Previous Moli OS binary restored (0.1.0-2)` et la commande `restore` de la sauvegarde ;
+le script sort en erreur. `cat ~/.moli-os` donne `0.1.0-2`. Retirer la panne :
 
 ```sh
 rm /etc/systemd/system/moli-os.service.d/test-panne.conf
