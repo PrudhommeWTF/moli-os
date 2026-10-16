@@ -142,5 +142,12 @@ jobs:
         run: |
           cp moli.example.toml assets/
           (cd assets && sha256sum -c ./*.sha256)
-          gh release create "$GITHUB_REF_NAME" --verify-tag --latest \
-            --title "Moli OS $GITHUB_REF_NAME" --generate-notes assets/*
+          # A release made by hand for this tag (from the web page, say) gets
+          # the files instead of failing the run.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" --clobber assets/*
+            gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease=false --latest
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --latest \
+              --title "Moli OS $GITHUB_REF_NAME" --generate-notes assets/*
+          fi

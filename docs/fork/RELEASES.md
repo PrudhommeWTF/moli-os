@@ -33,6 +33,11 @@ Deux architectures, chacune compilée nativement (runners `ubuntu-24.04` et
 
 Une étape qui échoue arrête tout : aucune release n'est publiée à moitié.
 
+Ne pas créer la release à la main depuis la page GitHub : le workflow la crée à la fin
+(compter une dizaine de minutes après le tag). Une release créée à la main pour ce tag
+reçoit quand même les fichiers à la fin du workflow ; d'ici là elle est vide, et une
+installation lancée entre-temps échoue (« No asset matching … »).
+
 ## Le nom du tag
 
 `v<version du workspace>-<n>` : `v0.1.0-2` (la première release de ce fork), puis
