@@ -29,6 +29,12 @@ git clone --depth 1 https://github.com/PrudhommeWTF/moli-os && bash moli-os/prox
 Défauts : Debian 13, non privilégié, 1 CPU, 256 Mo, 2 Go, sans nesting. Le mode avancé du
 script permet de les changer.
 
+Sans nesting, le systemd de Debian 13 ne peut pas monter `/dev/mqueue`, `/run/lock` ni un
+`/tmp` en mémoire : ces trois unités échoueraient à chaque démarrage et laisseraient le
+système « degraded ». L'installation les masque (`/tmp` reste un dossier du disque du
+conteneur) ; Moli n'utilise aucune d'elles. Avec `var_nesting=1`, elles n'échouent pas,
+mais le conteneur peut alors créer ses propres namespaces : inutile pour Moli.
+
 ## Comment le moteur trouve ces fichiers
 
 Le moteur (`community-scripts/core`, téléchargé à chaque lancement) remonte depuis

@@ -13,6 +13,13 @@ setting_up_container
 network_check
 update_os
 
+msg_info "Masking mounts an unprivileged container without nesting cannot make"
+# Debian 13's systemd mounts these itself; without nesting they fail at every
+# boot and leave the system "degraded". Moli uses none of them.
+systemctl mask -q dev-mqueue.mount run-lock.mount tmp.mount
+systemctl reset-failed
+msg_ok "Masked mounts an unprivileged container without nesting cannot make"
+
 fetch_and_deploy_gh_release "moli-os" "PrudhommeWTF/moli-os" "prebuild" "latest" "/opt/moli-os" "moli-os-linux-$(arch_resolve "x86_64" "aarch64").tar.gz"
 
 msg_info "Configuring Moli OS"
