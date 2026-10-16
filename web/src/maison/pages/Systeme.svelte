@@ -205,7 +205,10 @@
         </div>
       {/if}
     </section>
+  {/if}
 
+  <!-- The map: every installation, measured or not. -->
+  {#if sys}
     {#if roomless.length}
       <section class="roomless">
         <p><Icon name="info" size={16} /><b>{t('systeme.page.sans_piece', { count: roomless.length })}</b>
