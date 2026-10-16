@@ -1,0 +1,146 @@
+# Releases of this fork: a static binary per architecture, published on GitHub
+# so a Proxmox LXC can install it without Docker (proxmox/, docs/fork/RELEASES.md).
+# Separate from check.yml and audit.yml, which stay as upstream wrote them.
+#
+# A tag v<workspace version>-<n> (v0.1.0-1, v0.1.0-2…) builds the dashboard,
+# runs scripts/check.sh in the dev image, builds moli-os for musl, starts it
+# once, then publishes:
+#   moli-os-linux-x86_64.tar.gz  (+ .sha256)
+#   moli-os-linux-aarch64.tar.gz (+ .sha256)
+#   moli.example.toml
+name: release-fork
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    env:
+      TARGET: ${{ matrix.arch }}-unknown-linux-musl
+      ASSET: moli-os-linux-${{ matrix.arch }}.tar.gz
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tag names the version the binary is built from: v<Cargo version>-<n>.
+      - name: Check the tag
+        run: |
+          version=$(awk -F'"' '/^\[workspace.package\]/{p=1} p && /^version *=/{print $2; exit}' Cargo.toml)
+          case "$GITHUB_REF_NAME" in
+            "v$version"-*) ;;
+            *) echo "::error::tag $GITHUB_REF_NAME: expected v$version-<n> (workspace version $version)"; exit 1 ;;
+          esac
+          echo "$GITHUB_REF_NAME" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$' \
+            || { echo "::error::tag $GITHUB_REF_NAME: expected v$version-<n>, n a number"; exit 1; }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      # The dashboard first: the binary embeds web/dist.
+      - run: npm ci --no-audit --no-fund
+        working-directory: web
+      - run: npm run build
+        working-directory: web
+      - run: node scripts/i18n-check.mjs
+
+      # The dev image (Rust on Alpine, musl): the same toolchain as the
+      # Dockerfile's build stage, native on each runner.
+      - run: docker build -t moli-os-dev -f docker/dev.Dockerfile docker
+      - name: scripts/check.sh
+        run: >
+          docker run --rm -v "$PWD:/src" -v moli-cargo:/usr/local/cargo/registry
+          -v moli-target:/target -w /src moli-os-dev sh scripts/check.sh
+      - name: Build moli-os
+        run: |
+          mkdir -p dist
+          docker run --rm -v "$PWD:/src" -v moli-cargo:/usr/local/cargo/registry \
+            -v moli-target:/target -w /src moli-os-dev sh -c \
+            "cargo build --release --locked -p moli-os --target $TARGET \
+             && install -m 0755 /target/$TARGET/release/moli-os dist/moli-os \
+             && chown $(id -u):$(id -g) dist/moli-os"
+          file dist/moli-os
+          file dist/moli-os | grep -Eq 'static(ally|-pie) linked' || { echo "::error::moli-os is not static"; exit 1; }
+
+      # The binary as a service runs it: its own key file, an absolute data
+      # directory, then health, check-config, backup and restore.
+      - name: Start it once
+        run: |
+          set -eu
+          root=$(mktemp -d)
+          mkdir -p "$root/data" "$root/restored"
+          openssl rand -hex 32 >"$root/master.key"
+          chmod 600 "$root/master.key"
+          cat >"$root/data/moli.toml" <<EOF
+          [server]
+          listen = "127.0.0.1:8790"
+          data_dir = "$root/data"
+          EOF
+          export MOLI_CONFIG="$root/data/moli.toml" MOLI_MASTER_KEY_FILE="$root/master.key"
+          ./dist/moli-os --version
+          ./dist/moli-os check-config
+          ./dist/moli-os serve >"$root/serve.log" 2>&1 &
+          pid=$!
+          for _ in $(seq 1 30); do ./dist/moli-os health 2>/dev/null && break; sleep 1; done
+          ./dist/moli-os health || { cat "$root/serve.log"; exit 1; }
+          curl -fsS -H 'Host: 127.0.0.1' http://127.0.0.1:8790/api/health >/dev/null
+          ./dist/moli-os backup "$root/backup"
+          kill -TERM "$pid"
+          wait "$pid"
+          test ! -e "$root/data/master.key" || { echo "::error::a key was written in the data directory"; exit 1; }
+          sed "s|$root/data|$root/restored|" "$root/data/moli.toml" >"$root/restored.toml"
+          ./dist/moli-os -c "$root/restored.toml" restore "$root/backup"
+          test -f "$root/restored/moli.toml"
+          rm -rf "$root"
+
+      - name: Package
+        run: |
+          cp moli.example.toml LICENSE NOTICE dist/
+          tar -czf "$ASSET" -C dist moli-os moli.example.toml LICENSE NOTICE
+          sha256sum "$ASSET" >"$ASSET.sha256"
+          cat "$ASSET.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: moli-os-${{ matrix.arch }}
+          path: |
+            ${{ env.ASSET }}
+            ${{ env.ASSET }}.sha256
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: moli-os-*
+          merge-multiple: true
+          path: assets
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp moli.example.toml assets/
+          (cd assets && sha256sum -c ./*.sha256)
+          gh release create "$GITHUB_REF_NAME" --verify-tag --latest \
+            --title "Moli OS $GITHUB_REF_NAME" --generate-notes assets/*
