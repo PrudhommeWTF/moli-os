@@ -1,0 +1,56 @@
+{
+  "name": "Moli OS",
+  "slug": "moli-os",
+  "categories": [
+    16
+  ],
+  "date_created": "2026-10-16",
+  "type": "ct",
+  "updateable": true,
+  "privileged": false,
+  "interface_port": 8790,
+  "documentation": "https://github.com/PrudhommeWTF/moli-os/tree/main/docs",
+  "website": "https://github.com/PrudhommeWTF/moli-os",
+  "repository": "https://github.com/PrudhommeWTF/moli-os",
+  "platforms": [
+    "pve"
+  ],
+  "logo": "https://cdn.jsdelivr.net/gh/PrudhommeWTF/moli-os@main/mobile/assets/icon.png",
+  "description": "Moli OS is an agent-native, ultra-light home automation platform written in Rust: one static binary that embeds its dashboard, with drivers for Zigbee2MQTT, Hue, Tuya, Sonos, Reolink, Frigate and more, a deterministic automation engine, and MCP, REST and CLI access for AI agents under a human guard. This script installs the release binary of the fork, runs it as a systemd service under its own user, and keeps the vault's master key outside the data directory.",
+  "install_methods": [
+    {
+      "type": "default",
+      "script": "ct/moli-os.sh",
+      "config_path": "/var/lib/moli-os/moli.toml",
+      "resources": {
+        "cpu": 1,
+        "ram": 256,
+        "hdd": 2,
+        "os": "Debian",
+        "version": "13"
+      }
+    }
+  ],
+  "default_credentials": {
+    "username": null,
+    "password": null
+  },
+  "notes": [
+    {
+      "text": "There is no default account. At first start Moli writes a one-hour setup code to its log (journalctl -u moli-os | grep code=). Open http://<IP>:8790, type it, then choose the house code. Whoever types that code first claims the house, and a new code is written at every start until then, so finish the setup right after the install.",
+      "type": "warning"
+    },
+    {
+      "text": "The vault's master key is /etc/moli-os/master.key, created once at install. Backups (moli-os backup) never contain it: keep a copy in a password manager. Never generate a new one on an existing house: its vault would become unreadable.",
+      "type": "warning"
+    },
+    {
+      "text": "Run moli-os commands from the container's root shell as `moli-os <command>` (for example moli-os check-config): the wrapper runs them as the service user with the service's configuration and key.",
+      "type": "info"
+    },
+    {
+      "text": "Every update backs up the data to /var/backups/moli-os, keeps the previous binary as /opt/moli-os/moli-os.previous, and goes back to it on its own if /api/health does not answer.",
+      "type": "info"
+    }
+  ]
+}
