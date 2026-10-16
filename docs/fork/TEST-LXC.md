@@ -28,8 +28,9 @@ dev_mode=keep bash /root/moli-os-test/proxmox/ct/moli-os.sh
 Choisir l'installation par défaut, puis le stockage (ZFS). `dev_mode=keep` garde le
 conteneur si l'installation échoue, pour lire ce qui s'est passé.
 
-Attendu : `Completed Successfully!`, l'adresse `http://<IP>:8790`, et la commande du code
-d'installation. Pas de bannière ASCII en tête : le moteur n'en a pas pour ce fork
+Attendu : `Completed Successfully!`, l'adresse `http://<IP>:8790`, et le code d'installation
+lui-même (`ABCD-EFGH`), lu dans le journal du conteneur ; à défaut, la commande pour le
+lire. Pas de bannière ASCII en tête : le moteur n'en a pas pour ce fork
 (cosmétique).
 
 Hôte, la forme du conteneur :
@@ -70,7 +71,9 @@ Depuis un ordinateur du réseau : `curl -s http://<IP>:8790/api/health` répond 
 
 ## 3. Le code d'installation
 
-LXC, lu par vous seul :
+Le code est affiché à la fin de l'installation, dans le terminal de l'hôte : le lire, ne
+pas le copier ailleurs (il ouvre la maison à qui le tape en premier, pendant une heure).
+Passé ce délai, ou après un redémarrage, le nouveau code se lit dans le conteneur :
 
 ```sh
 journalctl -u moli-os | grep code= | tail -n 1

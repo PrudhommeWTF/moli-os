@@ -67,7 +67,9 @@ bash -c "$(curl -fsSL "$COMMUNITY_SCRIPTS_URL/ct/moli-os.sh")"
 - `moli-os <commande>` dans le shell root du conteneur : `check-config`, `backup`,
   `restore`, `secrets set` (toujours par un tube) passent par le wrapper. Donner des
   chemins absolus : la commande tourne en `moli`.
-- Le code d'installation (premier démarrage, une heure) : `journalctl -u moli-os | grep code=`.
+- Le code d'installation (une heure, un nouveau à chaque démarrage tant que le code de la
+  maison n'est pas choisi) est affiché à la fin de l'installation, sur l'hôte. Ensuite :
+  `journalctl -u moli-os | grep code=` dans le conteneur.
 - La clé maître n'est jamais dans `moli-os backup`, mais elle est sur le même disque que
   le coffre : les sauvegardes du conteneur (vzdump, PBS), ses snapshots ZFS et sa
   réplication la contiennent. En garder une copie dans un gestionnaire de mots de passe.

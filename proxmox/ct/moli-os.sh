@@ -84,5 +84,10 @@ msg_ok "Completed Successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
 echo -e "${INFO}${YW}Access it using the following URL:${CL}"
 echo -e "${GATEWAY}${BGN}http://${IP}:8790${CL}"
-echo -e "${INFO}${YW}Setup code (first start, valid one hour), inside the container:${CL}"
-echo -e "${TAB}${BGN}journalctl -u moli-os | grep code=${CL}"
+SETUP_CODE=$(pct exec "$CTID" -- sh -c "journalctl -u moli-os --no-pager -o cat | grep -o 'code=[A-Z0-9]*-[A-Z0-9]*' | tail -n 1 | cut -d= -f2" || true)
+echo -e "${INFO}${YW}Setup code (valid one hour; a new one at every start until the house code is chosen):${CL}"
+if [[ -n "$SETUP_CODE" ]]; then
+  echo -e "${TAB}${BGN}${SETUP_CODE}${CL}"
+else
+  echo -e "${TAB}${BGN}pct exec ${CTID} -- sh -c 'journalctl -u moli-os | grep code='${CL}"
+fi
