@@ -33,9 +33,15 @@ Deux architectures, chacune compilée nativement (runners `ubuntu-24.04` et
 
 Une étape qui échoue arrête tout : aucune release n'est publiée à moitié.
 
+Ne pas créer la release à la main depuis la page GitHub : le workflow la crée à la fin
+(compter une dizaine de minutes après le tag). Une release créée à la main pour ce tag
+reçoit quand même les fichiers à la fin du workflow ; d'ici là elle est vide, et une
+installation lancée entre-temps échoue (« No asset matching … »).
+
 ## Le nom du tag
 
-`v<version du workspace>-<n>` : `v0.1.0-1`, puis `v0.1.0-2`… La version du workspace est
+`v<version du workspace>-<n>` : `v0.1.0-2` (la première release de ce fork), puis
+`v0.1.0-3`… La version du workspace est
 celle de `[workspace.package]` dans `Cargo.toml` (aujourd'hui `0.1.0`). Quand l'amont la
 change (par exemple `0.2.0`), on repart à `v0.2.0-1`. Le workflow refuse tout autre nom.
 
@@ -56,21 +62,31 @@ Ensuite, depuis une copie à jour de `main` :
 
 ```sh
 git switch main && git pull --ff-only
+git ls-tree --name-only HEAD .github/workflows/release-fork.yml   # doit afficher le fichier
 sh scripts/check.sh                     # facultatif : la CI le refait
-git tag -a v0.1.0-1 -m "Moli OS v0.1.0-1"
-git push origin v0.1.0-1
+git tag -a v0.1.0-2 -m "Moli OS v0.1.0-2"
+git push origin v0.1.0-2
+```
+
+GitHub lance le workflow tel qu'il est **dans le commit tagué**. Un tag posé sur un commit
+qui n'a pas `release-fork.yml` (un `main` local pas à jour, par exemple) ne déclenche rien :
+pas d'exécution dans l'onglet Actions, pas de release. Le vérifier :
+
+```sh
+git ls-tree --name-only v0.1.0-2 .github/workflows/release-fork.yml   # vide = mauvais commit
 ```
 
 Suivre le workflow dans l'onglet Actions (`release-fork`), puis vérifier la release :
 
 ```sh
-curl -fsSLO https://github.com/PrudhommeWTF/moli-os/releases/download/v0.1.0-1/moli-os-linux-x86_64.tar.gz
-curl -fsSLO https://github.com/PrudhommeWTF/moli-os/releases/download/v0.1.0-1/moli-os-linux-x86_64.tar.gz.sha256
+curl -fsSLO https://github.com/PrudhommeWTF/moli-os/releases/download/v0.1.0-2/moli-os-linux-x86_64.tar.gz
+curl -fsSLO https://github.com/PrudhommeWTF/moli-os/releases/download/v0.1.0-2/moli-os-linux-x86_64.tar.gz.sha256
 sha256sum -c moli-os-linux-x86_64.tar.gz.sha256
 ```
 
-Un workflow raté : corriger, supprimer le tag (`git push origin :refs/tags/v0.1.0-1` et
-`git tag -d v0.1.0-1`), puis le reposer. Une release déjà publiée ne se republie pas sous
+Un tag sur le mauvais commit, ou un workflow raté : corriger, supprimer le tag
+(`git push origin :refs/tags/v0.1.0-2` et `git tag -d v0.1.0-2`), puis le reposer depuis
+le bon commit. Une release déjà publiée ne se republie pas sous
 le même nom : passer au numéro suivant.
 
 ## Après une synchronisation avec l'amont
@@ -78,7 +94,7 @@ le même nom : passer au numéro suivant.
 ```sh
 git fetch upstream && git merge upstream/main   # upstream = rudy-io/moli-os
 git push origin main
-git tag -a v0.1.0-2 -m "Moli OS v0.1.0-2" && git push origin v0.1.0-2
+git tag -a v0.1.0-3 -m "Moli OS v0.1.0-3" && git push origin v0.1.0-3
 ```
 
 Si l'amont touche au `Dockerfile` (nouvelle étape de build, nouvelle dépendance), relire
