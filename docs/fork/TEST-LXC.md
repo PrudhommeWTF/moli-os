@@ -28,8 +28,9 @@ dev_mode=keep bash /root/moli-os-test/proxmox/ct/moli-os.sh
 Choisir l'installation par défaut, puis le stockage (ZFS). `dev_mode=keep` garde le
 conteneur si l'installation échoue, pour lire ce qui s'est passé.
 
-Attendu : `Completed Successfully!`, l'adresse `http://<IP>:8790`, et la commande du code
-d'installation. Pas de bannière ASCII en tête : le moteur n'en a pas pour ce fork
+Attendu : `Completed Successfully!`, l'adresse `http://<IP>:8790`, et le code d'installation
+lui-même (`ABCD-EFGH`), lu dans le journal du conteneur ; à défaut, la commande pour le
+lire. Pas de bannière ASCII en tête : le moteur n'en a pas pour ce fork
 (cosmétique).
 
 Hôte, la forme du conteneur :
@@ -47,7 +48,9 @@ LXC :
 
 ```sh
 systemctl is-active moli-os                  # active
-systemctl --failed --no-legend               # rien : Debian 13 vit bien sans nesting
+systemctl --failed --no-legend               # rien (les 3 montages impossibles sans nesting sont masqués)
+systemctl is-system-running                  # running
+systemctl is-enabled dev-mqueue.mount run-lock.mount tmp.mount   # masked ×3
 moli-os check-config                         # configuration OK (0 driver(s))
 moli-os health && echo OK                    # OK
 curl -s http://127.0.0.1:8790/api/health | head -c 300; echo
@@ -68,7 +71,9 @@ Depuis un ordinateur du réseau : `curl -s http://<IP>:8790/api/health` répond 
 
 ## 3. Le code d'installation
 
-LXC, lu par vous seul :
+Le code est affiché à la fin de l'installation, dans le terminal de l'hôte : le lire, ne
+pas le copier ailleurs (il ouvre la maison à qui le tape en premier, pendant une heure).
+Passé ce délai, ou après un redémarrage, le nouveau code se lit dans le conteneur :
 
 ```sh
 journalctl -u moli-os | grep code= | tail -n 1
@@ -77,8 +82,12 @@ journalctl -u moli-os | grep code= | tail -n 1
 Ouvrir `http://<IP>:8790`, choisir la langue, taper le code, choisir le code de la maison
 (deux fois). Attendu : le dashboard s'ouvre.
 
-Puis, tout de suite, copier `/etc/moli-os/master.key` dans le gestionnaire de mots de passe,
-sans la coller ailleurs (pas de chat, pas de ticket).
+Puis, tout de suite, mettre `/etc/moli-os/master.key` dans le gestionnaire de mots de passe
+**sans l'afficher** (pas de `cat` à l'écran, pas de capture, pas de chat, pas de ticket) :
+depuis l'hôte, `pct pull <CTID> /etc/moli-os/master.key ./master.key`, l'importer, puis
+`shred -u ./master.key`. Une clé vue ailleurs est compromise : sur une installation
+réelle, on ne la régénère pas (le coffre deviendrait illisible), on réinstalle un
+conteneur neuf.
 
 Le code ne revient plus :
 

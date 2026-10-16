@@ -29,6 +29,12 @@ git clone --depth 1 https://github.com/PrudhommeWTF/moli-os && bash moli-os/prox
 Défauts : Debian 13, non privilégié, 1 CPU, 256 Mo, 2 Go, sans nesting. Le mode avancé du
 script permet de les changer.
 
+Sans nesting, le systemd de Debian 13 ne peut pas monter `/dev/mqueue`, `/run/lock` ni un
+`/tmp` en mémoire : ces trois unités échoueraient à chaque démarrage et laisseraient le
+système « degraded ». L'installation les masque (`/tmp` reste un dossier du disque du
+conteneur) ; Moli n'utilise aucune d'elles. Avec `var_nesting=1`, elles n'échouent pas,
+mais le conteneur peut alors créer ses propres namespaces : inutile pour Moli.
+
 ## Comment le moteur trouve ces fichiers
 
 Le moteur (`community-scripts/core`, téléchargé à chaque lancement) remonte depuis
@@ -61,7 +67,9 @@ bash -c "$(curl -fsSL "$COMMUNITY_SCRIPTS_URL/ct/moli-os.sh")"
 - `moli-os <commande>` dans le shell root du conteneur : `check-config`, `backup`,
   `restore`, `secrets set` (toujours par un tube) passent par le wrapper. Donner des
   chemins absolus : la commande tourne en `moli`.
-- Le code d'installation (premier démarrage, une heure) : `journalctl -u moli-os | grep code=`.
+- Le code d'installation (une heure, un nouveau à chaque démarrage tant que le code de la
+  maison n'est pas choisi) est affiché à la fin de l'installation, sur l'hôte. Ensuite :
+  `journalctl -u moli-os | grep code=` dans le conteneur.
 - La clé maître n'est jamais dans `moli-os backup`, mais elle est sur le même disque que
   le coffre : les sauvegardes du conteneur (vzdump, PBS), ses snapshots ZFS et sa
   réplication la contiennent. En garder une copie dans un gestionnaire de mots de passe.
